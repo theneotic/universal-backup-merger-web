@@ -1,0 +1,2 @@
+ALTER TABLE `merge_sessions` ADD `user_id` int;--> statement-breakpoint
+ALTER TABLE `merge_sessions` ADD CONSTRAINT `merge_sessions_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE no action ON UPDATE no action;

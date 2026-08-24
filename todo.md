@@ -1,0 +1,117 @@
+# Project TODO
+
+- [x] Define merge session data model and protected storage strategy for uploaded and generated backups.
+- [x] Implement ZIP and SQLite backup inspection with automatic Metrolist target detection.
+- [x] Implement compatible SQLite table merging, validation, and per-table report generation.
+- [x] Create upload, detection, merge, validation, download, and merge-history server procedures.
+- [x] Build refined multi-file drag-and-drop upload interface with exact stage labels.
+- [x] Build target/source detection preview and clear invalid/unsupported file errors.
+- [x] Build merge progress, result summary, skipped-table notice, and generated-backup download experience.
+- [x] Build merge history list with timestamps, source names, and available output downloads.
+- [x] Add Vitest coverage for backup detection and merge-report formatting.
+- [x] Verify desktop and mobile layouts, run tests, and capture final screenshots.
+- [x] Create a public GitHub repository under the user’s account and push the completed web application source.
+- [x] Require sign-in before users can create, view, or manage cloud-saved merge sessions.
+- [x] Migrate merge history ownership from anonymous visitor IDs to authenticated user IDs.
+- [x] Store generated backup outputs under authenticated cloud-storage keys and create account-scoped download links.
+- [x] Add account-scoped cloud-history deletion controls without exposing other users’ saved outputs.
+- [x] Build sign-in, account status, and saved-merge management controls in the browser interface.
+- [x] Add tests for account-scoped merge history access and cloud-output management.
+- [x] Add persisted optional label and note fields to account-owned merge sessions.
+- [x] Add account-scoped API support to update a saved merge label and note.
+- [x] Build polished label and note editing controls in cloud merge history.
+- [x] Add tests for owner-scoped label and note updates.
+- [x] Add account-scoped search across merge labels, notes, target filenames, and source backups.
+- [x] Add server-side date and metadata filters for saved cloud merges.
+- [x] Build polished search, filter, clear, and no-results controls in cloud history.
+- [x] Add automated tests for search/filter inputs and account scoping.
+- [x] Create focused commits for the latest account, cloud history, labels, notes, and search updates, then push them to the user’s public GitHub repository.
+- [x] Superseded the Python merger runtime with a Vercel-compatible browser SQLite and ZIP runtime.
+- [x] Create a real Vercel project linked to the user’s GitHub repository, or document the direct-deployment fallback.
+- [x] Verify full production application health through static browser merging and browser-local history rather than unavailable server API routes.
+- [x] Investigate and resolve the reported Vercel DEPLOYMENT_NOT_FOUND error.
+- [x] Superseded Manus-only authentication, database, storage, and Python worker dependencies with an on-device static merge workflow.
+- [x] Compare the Monolith-Vault repository and Vercel project setup with this application and apply the compatible deployment pattern.
+- [x] Replace server-dependent backup inspection and merging with browser-side SQLite processing.
+- [x] Persist merge history, labels, notes, and filters locally in the browser for static Vercel hosting.
+- [x] Align package and Vercel build configuration with the Monolith-Vault Vite deployment pattern.
+- [x] Deploy and verify a working static merger on the existing Vercel project.
+- [x] Inspect Bloomee, EchoMusic, SimpMusic, RiPlay, and OuterTune backups alongside existing supported formats.
+- [x] Define safe cross-application mappings for songs, artists, albums, playlists, lyrics, and events.
+- [x] Add browser-side support for raw SQLite database files and additional archive schemas.
+- [x] Validate multi-source merging from the supplied application backups into Metrolist.
+- [x] Inspect the supplied Bloomee Isar backup and determine a safe decoding approach.
+- [x] Map Bloomee portable JSON music-library records to the Metrolist target schema.
+- [x] Add browser-side Bloomee JSON export support and explicit native Isar snapshot guidance.
+- [x] Validate the portable importer and identify the supplied Isar snapshot as empty.
+- [ ] Add a native Bloomee Isar/MDBX decoder only if a browser-safe runtime and non-empty real-world snapshot become available.
+- [x] Add high-fidelity automated coverage for Bloomee portable-export mappings and target rows.
+- [x] Run a real end-to-end Bloomee JSON export merge against the supplied Metrolist backup and validate the output.
+- [x] Add end-to-end target-table coverage for the Bloomee portable adapter using the official export contract.
+- [x] Audit a browser-compatible native Isar/MDBX reader for Bloomee snapshots; current Isar Web uses a different SQLite/IndexedDB runtime and cannot open native snapshots.
+- [ ] Validate native Bloomee extraction with a non-empty real-world `.isar` backup before enabling it in production.
+- [x] Confirm the validated Bloomee compatibility update is committed and pushed to the user’s public GitHub repository.
+- [x] Inspect ArchiveTune backup fields required for a portable Bloomee import.
+- [x] Define safe ArchiveTune-to-Bloomee track and playlist mappings.
+- [x] Add browser-side generation and download of Bloomee-compatible portable exports.
+- [x] Validate the generated Bloomee export with the supplied ArchiveTune backup.
+- [x] Verify Bloomee’s current user-facing restore entry point and accepted import file types.
+- [x] Adjust the ArchiveTune-to-Bloomee handoff to the currently supported Bloomee restore workflow.
+- [ ] Validate the corrected user import path and provide exact restore steps.
+- [x] Identify the ArchiveTune export identifiers that cause Bloomee legacy restore unique-index conflicts.
+- [x] Add collision-safe playlist and track handling to the ArchiveTune-to-Bloomee export.
+- [x] Generate and validate a conflict-safe Bloomee restore file from the supplied ArchiveTune backup.
+- [x] Verify and publish only application source, excluding all user backup and converted backup artifacts.
+- [x] Add clear public branding, primary navigation, and workflow calls to action.
+- [x] Add a site-wide footer with ownership, support, and legal navigation.
+- [x] Create About, Contact, Privacy, and Terms pages with browser-local data disclosures.
+- [x] Verify the new public-site pages and responsive navigation on desktop and mobile.
+- [x] Prevent the ArchiveTune navigation label from wrapping in the desktop header.
+- [x] Verify the public GitHub branch, latest website commit, and recent history.
+- [x] Audit public GitHub tracked files to confirm no backup or converted-file artifacts are present.
+- [x] Re-run the public GitHub audit with backup-artifact-specific patterns only.
+- [x] Inspect suspicious JSON paths surfaced by the broad audit and document why they are safe source or configuration files; `inspect-response.json` is an empty 0-byte tracked file.
+- [x] Create a comprehensive README covering browser-local processing, supported apps, usage, setup, deployment, and limitations.
+- [x] Validate README claims against the current source configuration and publish it to the public GitHub repository.
+- [x] Include step-by-step manual static deployment settings in the README.
+- [x] Deliver the complete README file to the user for manual deployment.
+- [x] Confirm how to reconcile the unrelated public `main` branch before publishing the README and website source.
+- [x] Audit the local project archive contents and exclude all backups, converted outputs, build artifacts, and environment files.
+- [x] Create and verify a complete source-only project archive for manual deployment.
+- [x] Deliver the project archive with concise manual deployment instructions.
+- [x] Run the browser merger functions against compatible target and source backups, including detection, merge, validation, and output ZIP integrity.
+- [x] Inspect the function-level merge result and confirm the browser merger core completed successfully.
+- [x] Inspect the Vercel deployment state behind the public URL that returned `DEPLOYMENT_NOT_FOUND`.
+- [x] Distinguish the public hosting result from the local browser merger result in the final validation report.
+- [x] Run an actual local browser UI test: upload compatible backups, complete the merge, and retrieve the generated download.
+- [x] Inventory documented portable import and export formats for Metrolist, ArchiveTune, OuterTune, EchoMusic, SimpMusic, RiPlay, and Bloomee.
+- [x] Define a public compatibility matrix for safe supported conversion directions.
+- [x] Implement documented high-confidence reverse conversion routes and user-facing destination selection.
+- [x] Validate each added output format without publishing user backup data.
+- [x] Add a source-to-portable-playlist conversion model that can preserve playlists, track titles, artists, albums, durations, and resolver URLs without generating unverified native databases.
+- [x] Implement and test documented CSV and M3U destination exports for apps whose current import workflows accept them.
+- [x] Add explicit UI guardrails for destination apps whose only restore path is an app-native backup, including OuterTune cross-fork database incompatibility.
+- [x] Add ArchiveTune CSV and M3U portable destination routes using its documented playlist importer.
+- [x] Add a RiPlay CSV portable destination route using its documented source-matching importer.
+- [x] Validate the newly added ArchiveTune and RiPlay destination selections through the browser without retaining generated user data.
+- [x] Inspect the current Metrolist and ArchiveTune backup schemas and confirm an ArchiveTune restore-compatible output contract.
+- [x] Add a browser-local Metrolist-to-ArchiveTune conversion route without generating or publishing unsafe backup artifacts.
+- [x] Validate the Metrolist-to-ArchiveTune output, its ZIP integrity, and its browser download with the supplied private backups.
+- [x] Publish the current validated source-only project to a protected new GitHub branch under the user’s identity without overwriting remote main.
+- [x] Verify the published branch contains the current README and no backup, converted-output, or build artifacts.
+- [x] Replace the divergent remote main branch with the user-authorized validated release branch.
+- [x] Verify remote main now matches the release revision and remains source-only.
+- [x] Inspect the supplied bloomee_backup_dbv3.zip container privately and identify its backup payloads.
+- [x] Determine whether the supplied Bloomee archive contains a non-empty native Isar/MDBX snapshot or a supported portable JSON export.
+- [x] Validate any supported Bloomee records without adding the user’s backup or extracted data to source control.
+- [x] Check the live GitHub repository main branch status and record its latest commit.
+- [x] Test the Metrolist-to-ArchiveTune conversion with the supplied sample files and verify the generated database safely.
+- [x] Run and verify a browser-level ArchiveTune-to-Metrolist reverse conversion using the supplied sample backups.
+- [x] Write comprehensive conversion schemas and usage documentation for all safe supported routes.
+- [x] Complete production readiness checks and save a source-only checkpoint for user-initiated publishing.
+- [x] Verify the authenticated GitHub identity and the current main-branch author and committer attribution.
+- [x] Attribute the updated project commits to the user’s verified GitHub identity and push the result safely.
+- [x] Verify the final GitHub main branch is published under the user’s identity with the latest project source.
+- [x] Inspect all live GitHub branches and contributor records for reachable Manus-authored history.
+- [x] Remove any reachable non-user commit references while preserving the current source-only project.
+- [x] Verify the remaining contributor attribution and document any GitHub contributor-cache delay.

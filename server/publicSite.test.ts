@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 
 const app = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
 const chrome = readFileSync(new URL("../client/src/components/SiteChrome.tsx", import.meta.url), "utf8");
+const indexHtml = readFileSync(new URL("../client/index.html", import.meta.url), "utf8");
 const info = readFileSync(new URL("../client/src/pages/PublicInfo.tsx", import.meta.url), "utf8");
 const home = readFileSync(new URL("../client/src/pages/Home.tsx", import.meta.url), "utf8");
 const portable = readFileSync(new URL("../client/src/pages/PortablePlaylistExport.tsx", import.meta.url), "utf8");
 const metrolistToArchiveTune = readFileSync(new URL("../client/src/pages/MetrolistToArchiveTune.tsx", import.meta.url), "utf8");
+const bloomeeBridge = readFileSync(new URL("../client/src/pages/BloomeeBridge.tsx", import.meta.url), "utf8");
 
 describe("public site structure", () => {
   it("registers the requested public information pages", () => {
@@ -28,8 +30,17 @@ describe("public site structure", () => {
     expect(metrolistToArchiveTune).toContain("requires an existing ArchiveTune target backup");
   });
 
+  it("registers the Bloomee bridge directions and native snapshot guardrail", () => {
+    expect(app).toContain('path={"/bloomee-bridges"}');
+    expect(chrome).toContain("Bloomee bridges");
+    expect(bloomeeBridge).toContain("Metrolist → Bloomee");
+    expect(bloomeeBridge).toContain("Bloomee → ArchiveTune");
+    expect(bloomeeBridge).toContain("Native Bloomee `.isar` is intentionally blocked");
+  });
+
   it("exposes identity, navigation, support, and legal links", () => {
-    ["Universal Backup Merger", "Start merge", "ArchiveTune → Bloomee", "Contact", "Privacy", "Terms", "© {year}"].forEach(label => expect(chrome).toContain(label));
+    ["VibeBridge", "Music backup transfers", "Start merge", "ArchiveTune → Bloomee", "Contact", "Privacy", "Terms", "© {year}"].forEach(label => expect(chrome).toContain(label));
+    expect(indexHtml).toContain("VibeBridge | Music Backup Transfers");
   });
 
   it("keeps the main workflow and local-history search discoverable", () => {

@@ -8,6 +8,8 @@ describe("conversion schemas and usage documentation", () => {
     expect(documentation).toContain("# Conversion Schemas and Usage Guide");
     expect(documentation).toContain("ArchiveTune into Metrolist");
     expect(documentation).toContain("Metrolist into ArchiveTune");
+    expect(documentation).toContain("Metrolist into Bloomee");
+    expect(documentation).toContain("Bloomee into ArchiveTune");
     expect(documentation).toContain("title,artist,album,duration_seconds,source_url");
     expect(documentation).toContain("Native Bloomee `.isar` / MDBX");
   });

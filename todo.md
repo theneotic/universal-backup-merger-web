@@ -115,3 +115,20 @@
 - [x] Inspect all live GitHub branches and contributor records for reachable Manus-authored history.
 - [x] Remove any reachable non-user commit references while preserving the current source-only project.
 - [x] Verify the remaining contributor attribution and document any GitHub contributor-cache delay.
+- [x] Inspect persistent GitHub contributor-display references and distinguish hidden repository data from GitHub-side caching.
+- [x] Inspect the supplied Bloomee JSON, Isar, and ZIP containers privately and identify their actual payload formats.
+- [x] Confirm the exact portable Bloomee schema required for safe Metrolist-to-Bloomee conversion and reuse only validated fields.
+- [x] Add safe browser-local conversion routes between Metrolist, ArchiveTune, and portable Bloomee exports without generating unverified native databases.
+- [x] Validate the added Bloomee routes and downloads with private samples while keeping all backup data out of source control.
+- [x] Audit the Bloomee bridge working tree and tracked files to confirm no private backup, JSON, Isar, ZIP, or extracted data artifact entered source control.
+- [x] Normalize Bloomee YouTube Music resolver IDs when merging into Metrolist or ArchiveTune so a Metrolist-to-Bloomee-to-Metrolist round trip does not create duplicate source IDs.
+- [x] Revalidate the complete Metrolist, ArchiveTune, and portable Bloomee direction matrix in the browser using the supplied private samples.
+- [x] Re-run ArchiveTune-to-Bloomee in the browser after resolver-ID normalization and verify the downloaded legacy-v2 `.blm` structure with the supplied private ArchiveTune backup.
+- [x] Review and refine mobile navigation, typography, card spacing, route controls, progress panels, and footer layout across the public conversion screens.
+- [x] Verify the refined conversion screens at phone width without changing upload, conversion, validation, or download behavior.
+- [x] Run phone-viewport browser interaction checks for the main merge, ArchiveTune-to-Bloomee, Bloomee bridge, Metrolist-to-ArchiveTune, and portable export flows after the layout refinements.
+- [x] Audit full-width file actions, stacked bridge controls, download controls, and the mobile navigation open-and-close behavior for responsive regressions.
+- [x] Make the Home-screen “Choose files” control full width at phone sizes, matching the other mobile file actions.
+- [x] Re-run the 375x812 Metrolist-to-ArchiveTune end-to-end conversion after the shared mobile file-action styling change.
+- [x] Rename the product to a distinctive brand across the visible application, browser metadata, and user-facing documentation without changing conversion behavior.
+- [x] Replace the provisional RiffRelay identity with the user-approved VibeBridge brand across visible surfaces, product metadata, documentation, and portable exports.

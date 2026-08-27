@@ -2,7 +2,7 @@
 
 ## Purpose and safety boundary
 
-Universal Backup Merger is a **browser-first, source-only conversion tool** for supported music-library backups. Selected files are opened locally in the browser with `sql.js` and JSZip; the application does not upload a backup to a conversion server. A route is available only when it either merges into a user-supplied destination backup with a validated compatible SQLite schema, or emits a documented portable import format. It never disguises one application’s raw database as another application’s native backup.
+VibeBridge is a **browser-first, source-only conversion tool** for supported music-library backups. Selected files are opened locally in the browser with `sql.js` and JSZip; the application does not upload a backup to a conversion server. A route is available only when it either merges into a user-supplied destination backup with a validated compatible SQLite schema, or emits a documented portable import format. It never disguises one application’s raw database as another application’s native backup.
 
 > **Keep every original backup.** A generated file is an additional restore candidate, not a replacement for the original. Restore it in the destination app only after checking its contents and test it before deleting or overwriting a library.
 
@@ -10,7 +10,7 @@ Universal Backup Merger is a **browser-first, source-only conversion tool** for 
 | --- | --- | --- | --- |
 | Direct target merge | Destination app’s `.backup` ZIP with its `song.db` updated | The user supplies an existing destination backup and the shared SQLite tables are compatible | ArchiveTune → Metrolist; Metrolist → ArchiveTune |
 | Portable playlist package | ZIP containing one CSV or Extended M3U file per playlist | The destination documents a playlist importer for that portable format | Metrolist, Echo Music, ArchiveTune, and RiPlay |
-| Validated app-specific portable export | A destination-specific portable payload, not a raw database | The destination’s payload contract is known and tested | ArchiveTune → Bloomee legacy-v2 `.blm` |
+| Validated app-specific portable export | A destination-specific portable payload, not a raw database | The destination’s payload contract is known and tested | ArchiveTune → Bloomee and Metrolist → Bloomee legacy-v2 `.blm` |
 | Safety block | No generated native backup | The destination’s native backup format or cross-fork restore behavior is not a safe documented interchange path | Native Bloomee Isar/MDBX; OuterTune cross-fork backup restoration; arbitrary SimpMusic JSON/CSV |
 
 ## Accepted input containers and detection
@@ -20,11 +20,11 @@ The browser accepts `.backup`, `.zip`, `.db`, `.json`, `.blm`, and `.isar` filen
 | Detected source | Expected readable payload | Main merge treatment | Important limit |
 | --- | --- | --- | --- |
 | Metrolist | SQLite `song.db` in a `.backup`/ZIP or raw SQLite | Main target, or source for the ArchiveTune-target route | Exactly one Metrolist target is required for the main merge screen |
-| ArchiveTune | SQLite `song.db` in a `.backup`/ZIP or raw SQLite | Main source, Bloomee export source, or direct target for Metrolist transfer | Direct ArchiveTune output requires an existing ArchiveTune target backup |
+| ArchiveTune | SQLite `song.db` in a `.backup`/ZIP or raw SQLite | Main source, Bloomee export source, or direct target for Metrolist/Bloomee transfer | Direct ArchiveTune output requires an existing ArchiveTune target backup |
 | OuterTune | Compatible SQLite library | Direct shared-table copy into a Metrolist target | The app does not create an OuterTune native backup from other forks |
 | Echo Music / SimpMusic | SQLite library including their music tables | Field-mapped into a Metrolist target | Native database generation is not offered |
 | RiPlay | Raw SQLite library with its PascalCase/compatibility tables | Field-mapped into a Metrolist target | Native RiPlay backup generation is not offered |
-| Bloomee portable export | JSON or `.blm` object with `playlists` and `media_items` arrays | Mapped into a Metrolist target, or made portable for supported destinations | Must be a legacy portable export, not an Isar snapshot |
+| Bloomee portable export | JSON, `.blm`, or ZIP containing an object with `playlists` and `media_items` arrays | Mapped into Metrolist, into a supplied ArchiveTune target, or made portable for supported destinations | Must be a legacy portable export, not an Isar snapshot |
 | Bloomee native snapshot | `.isar` or ZIP containing `.isar` | Explicitly identified but not decoded | Native Isar/MDBX is not browser-safe in this implementation |
 
 An all-`0xFF` Isar payload is reported as **empty**, not as a valid library. A non-empty native Isar snapshot is still not opened or converted unless a browser-safe decoder and a real-device validation path are available.
@@ -76,6 +76,24 @@ The main merger writes the merged target database to `song.db` and carries forwa
 5. Restore it with ArchiveTune’s normal backup-and-restore feature.
 
 This route requires the ArchiveTune target so it can preserve `settings.xml`, target-only tables, and the current destination schema. It does not generate an ArchiveTune backup from scratch. The supplied private browser test confirmed SQLite integrity, target-settings preservation, 32,607 transferred Metrolist song IDs with zero missing IDs, and 5,807 retained playlist-membership tuples.
+
+### Metrolist into Bloomee
+
+1. Open **Bloomee bridges** and keep **Metrolist → Bloomee** selected.
+2. Select one Metrolist `.backup`, `.zip`, or `.db` source.
+3. Choose **Create Bloomee import file** and download the `.blm` result after validation.
+4. In Bloomee, use **Settings → Storage → Backup & Restore → Restore Backup**, with **Media items** selected.
+
+The downloaded `.blm` is a legacy-v2 JSON payload, not an Isar database. It includes only validated portable fields and source-namespaced playlists. Browser validation with the supplied private Metrolist backup produced **59 playlists** and **3,177 media items** in a 1,858,424-byte `.blm` file.
+
+### Bloomee into ArchiveTune
+
+1. Open **Bloomee bridges** and select **Bloomee → ArchiveTune**.
+2. Select a Bloomee JSON, `.blm`, or ZIP containing the portable JSON as the source.
+3. Select an existing ArchiveTune `.backup`, `.zip`, or `.db` file as the target.
+4. Choose **Create ArchiveTune backup**, then restore the downloaded backup only after retaining both originals.
+
+The bridge maps `mediaID` to the ArchiveTune `song.id` field, writes artist and album relationships only when values are present, namespaces Bloomee-created playlist identifiers, and copies the original ArchiveTune `settings.xml` into the result. Browser validation with the supplied 55-playlist/3,056-media-item Bloomee JSON passed `PRAGMA integrity_check`, preserved target settings, and omitted zero source media IDs.
 
 ## Source-specific mappings into a Metrolist target
 
@@ -134,9 +152,9 @@ The M3U route produces a ZIP of one `.m3u` file per playlist. Each track writes 
 
 The portable package is not a native app backup. It preserves playlist boundaries and searchable metadata, but artwork, listening history, downloads, app settings, and unresolved tracks depend on the destination app.
 
-## ArchiveTune to Bloomee `.blm`
+## ArchiveTune and Metrolist to Bloomee `.blm`
 
-The dedicated ArchiveTune → Bloomee page reads an ArchiveTune source and produces a legacy-v2 JSON payload with the `.blm` filename. It emits a `playlists` collection and a `media_items` collection, maps supported YouTube Music IDs into Bloomee’s resolver scope, namespaces playlist names as `ArchiveTune · <name>`, removes case-insensitive playlist-name collisions, excludes Bloomee system aliases, and deduplicates playlist memberships. These measures address the known case-insensitive unique playlist-name constraint in legacy Bloomee restore logic.
+The dedicated ArchiveTune → Bloomee page and the Metrolist → Bloomee selection in **Bloomee bridges** produce a legacy-v2 JSON payload with the `.blm` filename. Each emits a `playlists` collection and a `media_items` collection, maps supported YouTube Music IDs into Bloomee’s resolver scope, namespaces playlist names as `<source app> · <name>`, removes case-insensitive playlist-name collisions, excludes Bloomee system aliases, and deduplicates playlist memberships. These measures address the known case-insensitive unique playlist-name constraint in legacy Bloomee restore logic.
 
 Use the resulting file only through Bloomee’s **Settings → Storage → Backup & Restore → Restore Backup** workflow, with **Media items** enabled. Device restoration remains the final authority because an existing user library can still contain conflicts that no offline export can predict.
 

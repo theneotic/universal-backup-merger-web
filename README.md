@@ -1,6 +1,6 @@
-#Universal Backup Merger
+# VibeBridge
 
-**Universal Backup Merger** is a browser-first tool for inspecting, merging, converting, and organizing compatible music-app backups. It is designed for people moving their music-library metadata between supported apps while retaining control over the files they select.
+**VibeBridge** is a browser-first tool for inspecting, merging, converting, and organizing compatible music-app backups. It is designed for people moving their music-library metadata between supported apps while retaining control over the files they select.
 
 > **Privacy-first workflow:** the active merger and converter run in the browser. Selected backup files are not sent to a conversion server, and local merge history stays in that browser until you delete it.
 
@@ -23,12 +23,12 @@ The project also includes a dedicated **ArchiveTune → Bloomee** converter. It 
 | Application | Role | Input accepted by the browser workflow | Notes |
 |---|---|---|---|
 | Metrolist | Target | `.backup` | Required target for the main merge workflow. |
-| ArchiveTune | Source, converter source, and direct target | `.backup`, `.zip`, `.db` | Can merge into Metrolist, export to Bloomee, or serve as the user-supplied target for a Metrolist-to-ArchiveTune merge. |
+| ArchiveTune | Source, converter source, and direct target | `.backup`, `.zip`, `.db` | Can merge into Metrolist, export to Bloomee, or serve as the user-supplied target for Metrolist-to-ArchiveTune and Bloomee-to-ArchiveTune merges. |
 | OuterTune | Source | Compatible SQLite backup | Mapped into a Metrolist target. |
 | EchoMusic | Source | Compatible archive containing `Music Database` | Mapped into a Metrolist target. |
 | SimpMusic | Source | Compatible archive containing `Music Database` | Mapped into a Metrolist target. |
 | RiPlay | Source | Raw SQLite `.db` | Mapped into a Metrolist target. |
-| Bloomee portable export | Source | `.json` or `.blm` legacy JSON payload | Mapped into a Metrolist target. |
+| Bloomee portable export | Source and portable destination | `.json`, `.blm`, or ZIP containing legacy JSON | Mapped into a Metrolist target or a user-supplied ArchiveTune target; ArchiveTune and Metrolist can export the validated legacy-v2 `.blm` format. |
 | Bloomee native Isar snapshot | Not currently supported | `.isar` | Native Isar/MDBX snapshots cannot be safely decoded by the browser-only runtime. |
 
 ### Safe portable destination routes
@@ -41,7 +41,8 @@ The project also includes a dedicated **ArchiveTune → Bloomee** converter. It 
 | ArchiveTune | ZIP of CSV or Extended M3U playlist files | Any browser-readable supported source | Extract the ZIP and use ArchiveTune’s reviewed playlist importer. |
 | ArchiveTune | Native merged `.backup` | Metrolist plus an existing ArchiveTune target | Use `/metrolist-to-archivetune`. The target’s ArchiveTune settings and destination-only tables stay intact. |
 | RiPlay | ZIP of playlist CSV files | Any browser-readable supported source | Extract the ZIP and use RiPlay’s CSV source-matching playlist importer. |
-| Bloomee | `.blm` legacy-v2 JSON | ArchiveTune | Use the dedicated ArchiveTune → Bloomee converter and Bloomee’s restore workflow. |
+| Bloomee | `.blm` legacy-v2 JSON | ArchiveTune and Metrolist | Use `/archivetune-to-bloomee` or `/bloomee-bridges`, then use Bloomee’s own restore workflow. |
+| ArchiveTune | Native merged `.backup` | Portable Bloomee JSON plus an existing ArchiveTune target | Use `/bloomee-bridges` with **Bloomee → ArchiveTune**. The target settings and destination-only tables remain intact. |
 | SimpMusic | Official SimpMusic converter output | ArchiveTune, OuterTune, Metrolist | SimpMusic intentionally rejects hand-authored CSV and raw third-party backups; use its own documented browser converter. |
 | OuterTune | No generated native backup | — | Cross-fork backup restore is not safely supported. The app will not create an unsafe raw database for this destination. |
 
@@ -64,6 +65,7 @@ The browser history area lets you search local sessions by filename, label, note
 | Local browser merger | Passed with the supplied private Metrolist target and ArchiveTune source | The visible upload, detection, merge, validation, result card, and download flow created a non-empty 16,795,534-byte Metrolist backup. |
 | Local portable playlist exports | Passed with the supplied private ArchiveTune source | Browser downloads contained 58 playlist files for Metrolist CSV, Echo Music M3U, ArchiveTune CSV/M3U, and RiPlay CSV routes. |
 | Local Metrolist → ArchiveTune target merge | Passed with the supplied private Metrolist source and ArchiveTune target | The browser output preserved `settings.xml`, passed SQLite integrity, contained all 32,607 Metrolist songs and all 5,807 Metrolist playlist memberships, and downloaded as a non-empty 20,326,523-byte ArchiveTune backup. |
+| Local Bloomee bridge routes | Passed with the supplied private Metrolist, ArchiveTune, and portable Bloomee JSON samples | Metrolist → Bloomee created a 1,858,424-byte legacy-v2 `.blm` containing 59 playlists and 3,177 media items. Bloomee → ArchiveTune passed SQLite integrity, preserved `settings.xml`, and retained every source `mediaID`. |
 | Previous public Vercel URL | `DEPLOYMENT_NOT_FOUND` | The hosted URL is not currently a working proof of the app. Deploy the included source archive or reconnect a project before relying on it. |
 
 This separation is deliberate: local browser validation proves the client-side merger code and download flow, while a public deployment must be separately linked, built, and checked after publishing.
@@ -87,6 +89,15 @@ The exporter preserves supported playlist tracks, artist names, album metadata, 
 5. Keep both original files, then restore the generated backup with ArchiveTune’s own backup-and-restore workflow.
 
 This direct route copies compatible shared music-library rows into the supplied ArchiveTune target and verifies the output database before download. It is not a standalone ArchiveTune database generator; an ArchiveTune target backup is required.
+
+## Use the Bloomee bridges
+
+1. Open `/bloomee-bridges` after deploying the project.
+2. Choose **Metrolist → Bloomee** to convert one Metrolist `.backup`, `.zip`, or `.db` into a legacy-v2 `.blm` file for Bloomee’s restore screen.
+3. Choose **Bloomee → ArchiveTune** to merge a portable Bloomee `.json`, `.blm`, or ZIP containing that JSON into an existing ArchiveTune target backup.
+4. For a Bloomee `.blm`, restore with **Settings → Storage → Backup & Restore → Restore Backup**, retaining the original backup first.
+
+The bridge accepts only Bloomee’s portable JSON structure. Native `.isar` snapshots stay blocked because they are not safely readable in this browser-only implementation.
 
 ## Export portable playlists for Metrolist or Echo Music
 
@@ -197,4 +208,4 @@ The package metadata declares the project under the [MIT License](https://openso
 
 [1]: https://vite.dev/guide/ "Vite Guide"
 [2]: https://vercel.com/docs/frameworks/frontend/vite "Deploying Vite with Vercel"
-[3]: https://github.com/theneotic/universal-backup-merger-web "Universal Backup Merger repository"
+[3]: https://github.com/theneotic/universal-backup-merger-web "VibeBridge repository"

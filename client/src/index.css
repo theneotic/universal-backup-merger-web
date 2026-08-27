@@ -79,3 +79,35 @@
 }
 
 .font-display { font-family: var(--font-display); }
+
+@media (max-width: 639px) {
+  .mobile-page { padding-top: 1.75rem; padding-bottom: 2.5rem; }
+  .mobile-hero { margin-bottom: 1.75rem; gap: 1.25rem; }
+  .mobile-hero-title { font-size: clamp(2.25rem, 10.5vw, 2.75rem); line-height: 0.96; letter-spacing: -0.052em; }
+  .mobile-device-pill { width: 100%; justify-content: center; }
+  .mobile-hero-actions { display: grid; grid-template-columns: minmax(0, 1fr); width: 100%; gap: 0.625rem; }
+  .mobile-hero-actions > a { justify-content: center; }
+  .mobile-surface { border-radius: 1.5rem; }
+  .mobile-form { padding: 1rem; }
+  .mobile-progress { padding: 1rem; }
+  .mobile-file-action { display: flex; width: 100%; }
+  .mobile-guidance { margin-top: 1rem; padding: 0.875rem 1rem; text-align: left; }
+  .mobile-route-toggle { display: grid; grid-template-columns: minmax(0, 1fr); width: 100%; }
+  .mobile-route-toggle > button { width: 100%; justify-content: center; }
+
+  main.container > section > div:first-child h1.font-display {
+    font-size: clamp(2.25rem, 10.5vw, 2.75rem);
+    line-height: 0.96;
+    letter-spacing: -0.052em;
+  }
+
+  main.container section[class*="rounded-[30px]"] { border-radius: 1.5rem; }
+  main.container section[class*="rounded-[30px]"] > div > div:first-child,
+  main.container section[class*="rounded-[30px]"] > div > aside { padding: 1rem; }
+  main.container section[class*="rounded-[30px]"] h2.font-display { font-size: 1.25rem; }
+  main.container section[class*="rounded-[30px]"] [class*="border-dashed"] button { width: 100%; }
+  main.container a[download] { width: 100%; justify-content: center; }
+  main.container section[class*="rounded-[30px]"] + div { margin-top: 1rem; padding: 0.875rem 1rem; text-align: left; }
+  [aria-label="Bloomee bridge direction"] { display: grid; grid-template-columns: minmax(0, 1fr); width: 100%; }
+  [aria-label="Bloomee bridge direction"] > button { width: 100%; justify-content: center; }
+}

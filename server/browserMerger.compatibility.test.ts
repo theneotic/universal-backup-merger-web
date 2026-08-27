@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import initSqlJs from "sql.js";
-import { inspectBloomeeNativeSnapshot, mapArchiveTuneToBloomee, mapBloomeePortableBackup, mergeBloomeePortableBackup, parseBloomeePortableBackup, supportedApplicationNames, unsupportedContainerNotes, type MergeReport } from "../client/src/lib/browserMerger";
+import { inspectBloomeeNativeSnapshot, mapArchiveTuneToBloomee, mapBloomeePortableBackup, mapMetrolistToBloomee, mergeBloomeeIntoArchiveTuneDatabase, mergeBloomeePortableBackup, parseBloomeePortableBackup, supportedApplicationNames, unsupportedContainerNotes, type MergeReport } from "../client/src/lib/browserMerger";
 
 function createMetrolistTargetSchema(db: Awaited<ReturnType<typeof initSqlJs>>["Database"]) {
   db.run("CREATE TABLE artist (id TEXT PRIMARY KEY, name TEXT NOT NULL, thumbnailUrl TEXT, channelId TEXT, lastUpdateTime INTEGER NOT NULL, bookmarkedAt INTEGER, isLocal INTEGER NOT NULL)");
@@ -47,6 +47,17 @@ describe("cross-application backup compatibility", () => {
     expect(mapped.playlistSongs.map(row => row.songId)).toEqual(["track-42", "track-42"]);
   });
 
+  it("normalizes Bloomee YouTube Music resolver IDs before inserting source-library records", () => {
+    const parsed = parseBloomeePortableBackup({
+      playlists: [{ playlistName: "Resolver test", createdAt: "2026-08-27T00:00:00.000Z" }],
+      media_items: [{ mediaID: "content-resolver.bloomfactory.ytmusic::abc123", title: "Resolver track", artist: "Resolver artist", mediaInPlaylists: [{ playlistName: "Resolver test" }] }],
+    });
+    const mapped = mapBloomeePortableBackup(parsed!, "bloomee-portable.json");
+    expect(mapped.songs[0]?.id).toBe("abc123");
+    expect(mapped.songArtists[0]?.songId).toBe("abc123");
+    expect(mapped.playlistSongs[0]?.songId).toBe("abc123");
+  });
+
   it("merges Bloomee portable records into the expected Metrolist target tables", async () => {
     const SQL = await initSqlJs({ wasmBinary: readFileSync(new URL("../node_modules/sql.js/dist/sql-wasm.wasm", import.meta.url)) });
     const db = new SQL.Database();
@@ -84,8 +95,43 @@ describe("cross-application backup compatibility", () => {
       const converted = mapArchiveTuneToBloomee(db, "ArchiveTune.backup");
       expect(converted.report).toMatchObject({ playlists: 1, mediaItems: 1, skippedTracks: 0 });
       expect(converted.payload.playlists).toMatchObject([{ playlistName: "ArchiveTune · Saved songs" }]);
-      expect(converted.payload.media_items).toMatchObject([{ mediaID: "content-resolver.bloomfactory.ytmusic::abc123", title: "Archive track", artist: "Archive artist", album: "Archive album", duration: 235, permaURL: "https://music.youtube.com/watch?v=abc123", source: "youtube", mediaInPlaylists: [{ playlistName: "ArchiveTune · Saved songs" }] }]);
+      expect(converted.payload.media_items).toMatchObject([{ mediaID: "content-resolver.bloomfactory.ytmusic::abc123", title: "Archive track", artist: "Archive artist", album: "Archive album", duration: 235, permaURL: "https://music.youtube.com/watch?v=abc123", mediaInPlaylists: [{ playlistName: "ArchiveTune · Saved songs" }] }]);
       expect(parseBloomeePortableBackup(converted.payload)).not.toBeNull();
+    } finally { db.close(); }
+  });
+
+  it("maps Metrolist playlist tracks into the same validated Bloomee legacy-v2 contract", async () => {
+    const SQL = await initSqlJs({ wasmBinary: readFileSync(new URL("../node_modules/sql.js/dist/sql-wasm.wasm", import.meta.url)) });
+    const db = new SQL.Database();
+    try {
+      db.run("CREATE TABLE song (id TEXT PRIMARY KEY, title TEXT, duration INTEGER, thumbnailUrl TEXT, albumName TEXT)");
+      db.run("CREATE TABLE artist (id TEXT PRIMARY KEY, name TEXT)");
+      db.run("CREATE TABLE playlist (id TEXT PRIMARY KEY, name TEXT)");
+      db.run("CREATE TABLE song_artist_map (songId TEXT, artistId TEXT, position INTEGER)");
+      db.run("CREATE TABLE playlist_song_map (playlistId TEXT, songId TEXT, position INTEGER)");
+      db.run("INSERT INTO song VALUES ('metrolist-42', 'Metro track', 201, 'https://image.example/metro.jpg', 'Metro album')");
+      db.run("INSERT INTO artist VALUES ('artist-1', 'Metro artist')");
+      db.run("INSERT INTO playlist VALUES ('playlist-1', 'Morning')");
+      db.run("INSERT INTO song_artist_map VALUES ('metrolist-42', 'artist-1', 0)");
+      db.run("INSERT INTO playlist_song_map VALUES ('playlist-1', 'metrolist-42', 0)");
+      const converted = mapMetrolistToBloomee(db, "Metrolist.backup");
+      expect(converted.payload._meta).toMatchObject({ format: "legacy-v2-full", sourceApplication: "Metrolist" });
+      expect(converted.payload.playlists).toMatchObject([{ playlistName: "Metrolist · Morning" }]);
+      expect(converted.payload.media_items).toMatchObject([{ mediaID: "content-resolver.bloomfactory.ytmusic::metrolist-42", title: "Metro track", artist: "Metro artist", mediaInPlaylists: [{ playlistName: "Metrolist · Morning" }] }]);
+      expect(parseBloomeePortableBackup(converted.payload)).not.toBeNull();
+    } finally { db.close(); }
+  });
+
+  it("merges portable Bloomee records into an ArchiveTune target while preserving valid SQLite integrity", async () => {
+    const SQL = await initSqlJs({ wasmBinary: readFileSync(new URL("../node_modules/sql.js/dist/sql-wasm.wasm", import.meta.url)) });
+    const db = new SQL.Database();
+    try {
+      createMetrolistTargetSchema(db);
+      const payload = parseBloomeePortableBackup({ playlists: [{ playlistName: "Bloomee import", createdAt: "2026-08-27T00:00:00.000Z" }], media_items: [{ mediaID: "track-b", title: "Bridge track", artist: "Bridge artist", album: "Bridge album", duration: 180, mediaInPlaylists: [{ playlistName: "Bloomee import" }] }] });
+      const mergeReport = mergeBloomeeIntoArchiveTuneDatabase(db, payload!, "ArchiveTune.backup", "Bloomee.json");
+      expect(mergeReport.counts).toMatchObject({ songs: 1, artists: 1, albums: 1, playlists: 1 });
+      expect(db.exec("SELECT count(*) FROM playlist_song_map")[0]?.values).toEqual([[1]]);
+      expect(db.exec("PRAGMA integrity_check")[0]?.values).toEqual([["ok"]]);
     } finally { db.close(); }
   });
 

@@ -185,6 +185,15 @@ export function mergeMetrolistIntoArchiveTuneDatabase(targetDb: Database, source
   return report;
 }
 
+export function mergeBloomeeIntoArchiveTuneDatabase(targetDb: Database, payload: BloomeePortableBackup, targetFileName = "ArchiveTune.backup", sourceFileName = "Bloomee.json"): MergeReport {
+  const targetTables = tableNames(targetDb);
+  if (!actualTable(targetTables, "song") || !actualTable(targetTables, "playlist") || !actualTable(targetTables, "playlist_song_map")) throw new Error("detecting: The ArchiveTune target is missing its required music-library tables.");
+  const report: MergeReport = { counts: { songs: 0, artists: 0, albums: 0, playlists: 0, lyrics: 0, events: 0 }, skippedTables: [], targetFileName, sourceFileNames: [sourceFileName] };
+  mergeBloomeePortableBackup(targetDb, payload, sourceFileName, report);
+  if (scalar(targetDb, "PRAGMA integrity_check") !== "ok") throw new Error("validating: ArchiveTune target integrity check failed after merging Bloomee data.");
+  return report;
+}
+
 function mergeEchoFamily(target: Database, sourceDb: Database, source: Extracted, report: MergeReport) {
   const songTable = actualTable(source.tables, "song"); if (songTable) rows(sourceDb, songTable).forEach(song => { addSong(target, song, report); array(song.artistId).forEach((id, index) => addArtist(target, { id, name: array(song.artistName)[index] ?? array(song.artistName)[0] ?? id }, report)); });
   const artistTable = actualTable(source.tables, "artist"); if (artistTable) rows(sourceDb, artistTable).forEach(row => addArtist(target, row, report));
@@ -211,6 +220,11 @@ function mergeRiPlay(target: Database, sourceDb: Database, source: Extracted, re
 
 function bloomeeArtists(value: unknown) { return text(value)?.split(",").map(name => name.trim()).filter(Boolean) ?? []; }
 function bloomeeMemberships(value: unknown) { return objects(value).map(item => text(item.playlistName)).filter((name): name is string => Boolean(name)); }
+function bloomeeLibraryId(value: unknown) {
+  const raw = text(value)?.trim() ?? "";
+  const resolverPrefix = "content-resolver.bloomfactory.ytmusic::";
+  return raw.startsWith(resolverPrefix) ? raw.slice(resolverPrefix.length) : raw;
+}
 
 export function mapBloomeePortableBackup(payload: BloomeePortableBackup, sourceName: string) {
   const sourcePrefix = `bloomee:${sourceName}:`;
@@ -223,7 +237,7 @@ export function mapBloomeePortableBackup(payload: BloomeePortableBackup, sourceN
     mapped.playlists.push({ id, row: { ...row, id, name, createdAt: timestamp(row.createdAt), lastUpdateTime: timestamp(row.createdAt), trackCount: 0 } });
   });
   payload.mediaItems.forEach(track => {
-    const id = text(track.mediaID); if (!id) return;
+    const id = bloomeeLibraryId(track.mediaID); if (!id) return;
     const albumName = text(track.album);
     const albumId = albumName ? `${sourcePrefix}album:${encodeURIComponent(albumName)}` : null;
     if (albumName && albumId) mapped.albums.push({ id: albumId, title: albumName, artURL: track.artURL, inLibrary: timestamp(track.createdAt) });
@@ -255,7 +269,7 @@ export function mergeBloomeePortableBackup(target: Database, payload: BloomeePor
 const BLOOMEE_SYSTEM_PLAYLISTS = new Set(["Liked", "_DOWNLOADS", "recently_played", "_LOCAL_MUSIC"]);
 function bloomeePlaylistKey(name: string) { return name.trim().replace(/\s+/g, " ").toLocaleLowerCase(); }
 const BLOOMEE_SYSTEM_PLAYLIST_KEYS = new Set(Array.from(BLOOMEE_SYSTEM_PLAYLISTS, bloomeePlaylistKey));
-function archiveTuneBloomeeMediaId(value: unknown) {
+function bloomeeMediaId(value: unknown) {
   const raw = text(value)?.trim() ?? "";
   if (!raw) return null;
   if (raw.startsWith("content-resolver.")) return raw;
@@ -263,12 +277,12 @@ function archiveTuneBloomeeMediaId(value: unknown) {
   return normalized ? `content-resolver.bloomfactory.ytmusic::${normalized}` : null;
 }
 
-export function mapArchiveTuneToBloomee(sourceDb: Database, sourceFileName: string) {
+export function mapSqliteBackupToBloomee(sourceDb: Database, sourceFileName: string, sourceApplication: "ArchiveTune" | "Metrolist") {
   const tables = tableNames(sourceDb);
   const songTable = actualTable(tables, "song");
   const playlistTable = actualTable(tables, "playlist");
   const playlistSongTable = actualTable(tables, "playlist_song_map");
-  if (!songTable || !playlistTable || !playlistSongTable) throw new Error("detecting: ArchiveTune backup is missing song, playlist, or playlist_song_map data.");
+  if (!songTable || !playlistTable || !playlistSongTable) throw new Error(`detecting: ${sourceApplication} backup is missing song, playlist, or playlist_song_map data.`);
 
   const songs = new Map(rows(sourceDb, songTable).map(row => [String(row.id), row]));
   const artistTable = actualTable(tables, "artist");
@@ -288,7 +302,7 @@ export function mapArchiveTuneToBloomee(sourceDb: Database, sourceFileName: stri
     const key = name ? bloomeePlaylistKey(name) : "";
     if (!id || !name || BLOOMEE_SYSTEM_PLAYLIST_KEYS.has(key)) return;
     playlistKeysById.set(id, key);
-    if (!exportedPlaylistNames.has(key)) exportedPlaylistNames.set(key, `ArchiveTune · ${name.replace(/\s+/g, " ")}`);
+    if (!exportedPlaylistNames.has(key)) exportedPlaylistNames.set(key, `${sourceApplication} · ${name.replace(/\s+/g, " ")}`);
   });
   const memberships = new Map<string, string[]>();
   rows(sourceDb, playlistSongTable).sort((left, right) => number(left.position) - number(right.position)).forEach(row => {
@@ -302,16 +316,19 @@ export function mapArchiveTuneToBloomee(sourceDb: Database, sourceFileName: stri
   let skippedTracks = 0;
   const mediaItems: Row[] = [];
   memberships.forEach((playlistNamesForSong, songId) => {
-    const song = songs.get(songId); const mediaID = archiveTuneBloomeeMediaId(songId);
+    const song = songs.get(songId); const mediaID = bloomeeMediaId(songId);
     if (!song || !mediaID || !playlistNamesForSong.length) { skippedTracks++; return; }
     const artistNames = (artistMemberships.get(songId) ?? []).sort((left, right) => left.position - right.position).map(member => text(artists.get(member.id)?.name)?.trim()).filter((name): name is string => Boolean(name));
-    mediaItems.push({ mediaID, title: text(song.title) ?? mediaID, artist: artistNames.join(", "), album: text(song.albumName) ?? "", artURL: text(song.thumbnailUrl) ?? "", duration: Math.max(0, number(song.duration)), permaURL: `https://music.youtube.com/watch?v=${encodeURIComponent(songId)}`, source: "youtube", mediaInPlaylists: playlistNamesForSong.map(playlistName => ({ playlistName })) });
+    mediaItems.push({ mediaID, title: text(song.title) ?? mediaID, artist: artistNames.join(", "), album: text(song.albumName) ?? "", artURL: text(song.thumbnailUrl) ?? "", duration: Math.max(0, number(song.duration)), permaURL: text(song.sourceUrl ?? song.videoUrl) ?? `https://music.youtube.com/watch?v=${encodeURIComponent(songId)}`, mediaInPlaylists: playlistNamesForSong.map(playlistName => ({ playlistName })) });
   });
   const playlists = Array.from(exportedPlaylistNames.values()).map(playlistName => ({ playlistName, createdAt: new Date().toISOString() }));
-  const payload = { _meta: { format: "legacy-v2-full", exportedAt: new Date().toISOString(), generatedBy: "Universal Backup Merger · ArchiveTune exporter", sourceApplication: "ArchiveTune", sourceFileName, playlistsCount: playlists.length, mediaItemsCount: mediaItems.length }, playlists, media_items: mediaItems };
+  const payload = { _meta: { format: "legacy-v2-full", exportedAt: new Date().toISOString(), generatedBy: `VibeBridge · ${sourceApplication} exporter`, sourceApplication, sourceFileName, playlistsCount: playlists.length, mediaItemsCount: mediaItems.length }, playlists, media_items: mediaItems };
   if (!parseBloomeePortableBackup(payload)) throw new Error("validating: Generated Bloomee export did not match the portable backup format.");
   return { payload, report: { sourceFileName, playlists: playlists.length, mediaItems: mediaItems.length, skippedTracks } satisfies BloomeeExportReport };
 }
+
+export function mapArchiveTuneToBloomee(sourceDb: Database, sourceFileName: string) { return mapSqliteBackupToBloomee(sourceDb, sourceFileName, "ArchiveTune"); }
+export function mapMetrolistToBloomee(sourceDb: Database, sourceFileName: string) { return mapSqliteBackupToBloomee(sourceDb, sourceFileName, "Metrolist"); }
 
 export async function exportArchiveTuneToBloomee(file: File, onStage: (stage: Stage) => void): Promise<BrowserBloomeeExport> {
   onStage("detecting"); SQL = await sql();
@@ -447,7 +464,7 @@ export async function createPortablePlaylistBundle(playlists: PortablePlaylist[]
   const zip = new JSZip();
   const folder = format === "csv" ? "csv" : "m3u";
   const tracks = usable.reduce((total, playlist) => total + playlist.tracks.length, 0);
-  zip.file("README.txt", `Universal Backup Merger portable playlist package\n\nSource: ${sourceFileName}\nDetected source: ${sourceApplication}\nFormat: ${format.toUpperCase()}\nPlaylists: ${usable.length}\nTracks: ${tracks}\n\nEach file represents one playlist. This package is not a native application database backup. Import the individual playlist files using the destination application's documented playlist import action.\n`);
+  zip.file("README.txt", `VibeBridge portable playlist package\n\nSource: ${sourceFileName}\nDetected source: ${sourceApplication}\nFormat: ${format.toUpperCase()}\nPlaylists: ${usable.length}\nTracks: ${tracks}\n\nEach file represents one playlist. This package is not a native application database backup. Import the individual playlist files using the destination application's documented playlist import action.\n`);
   usable.forEach((playlist, index) => {
     const name = `${String(index + 1).padStart(2, "0")}_${filePart(playlist.name, "playlist")}`;
     if (format === "csv") {
@@ -520,4 +537,34 @@ export async function mergeMetrolistToArchiveTune(metrolistFile: File, archiveTu
     sourceDb.close();
     targetDb.close();
   }
+}
+
+export async function mergeBloomeeToArchiveTune(bloomeeFile: File, archiveTuneTargetFile: File, onStage: (stage: Stage) => void): Promise<BrowserMerge> {
+  onStage("detecting");
+  SQL = await sql();
+  const [source, target] = await Promise.all([extract(bloomeeFile, 0), extract(archiveTuneTargetFile, 1)]);
+  if (source.unsupported || target.unsupported) throw new Error(`detecting: ${source.unsupported ?? target.unsupported}`);
+  if (source.app !== "Bloomee" || !source.bloomee) throw new Error("detecting: Select a Bloomee portable .json, .blm, or ZIP export as the source. Native .isar snapshots are not supported.");
+  if (target.app !== "ArchiveTune" || !target.dbBytes) throw new Error("detecting: Select an ArchiveTune .backup, .zip, or .db file as the target.");
+  const targetDb = new SQL.Database(target.dbBytes);
+  try {
+    onStage("merging");
+    const report = mergeBloomeeIntoArchiveTuneDatabase(targetDb, source.bloomee, target.name, source.name);
+    onStage("validating");
+    const zip = new JSZip();
+    zip.file("song.db", targetDb.export());
+    if (target.settings) zip.file(target.settingsName ?? "settings.xml", target.settings);
+    return { report, output: await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } }) };
+  } finally { targetDb.close(); }
+}
+
+export async function exportMetrolistToBloomee(file: File, onStage: (stage: Stage) => void): Promise<BrowserBloomeeExport> {
+  onStage("detecting"); SQL = await sql();
+  const source = await extract(file, 0);
+  if (source.app !== "Metrolist" || !source.dbBytes) throw new Error("detecting: Upload a Metrolist .backup, .zip, or SQLite database to create a Bloomee import file.");
+  const sourceDb = new SQL.Database(source.dbBytes);
+  try {
+    onStage("merging"); const converted = mapMetrolistToBloomee(sourceDb, source.name);
+    onStage("validating"); return { report: converted.report, output: new Blob([JSON.stringify(converted.payload, null, 2)], { type: "application/json" }) };
+  } finally { sourceDb.close(); }
 }

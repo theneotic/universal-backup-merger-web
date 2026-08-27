@@ -132,3 +132,5 @@
 - [x] Re-run the 375x812 Metrolist-to-ArchiveTune end-to-end conversion after the shared mobile file-action styling change.
 - [x] Rename the product to a distinctive brand across the visible application, browser metadata, and user-facing documentation without changing conversion behavior.
 - [x] Replace the provisional RiffRelay identity with the user-approved VibeBridge brand across visible surfaces, product metadata, documentation, and portable exports.
+- [x] Review, commit, and push the approved VibeBridge source-only updates to the existing user-owned GitHub repository using theneotic’s specified author identity and the repository’s default branch.
+- [x] Add a persistent, accessible user-toggleable dark mode across the responsive VibeBridge interface without changing browser-local conversion behavior.

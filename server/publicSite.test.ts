@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 
 const app = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
 const chrome = readFileSync(new URL("../client/src/components/SiteChrome.tsx", import.meta.url), "utf8");
+const theme = readFileSync(new URL("../client/src/contexts/ThemeContext.tsx", import.meta.url), "utf8");
+const themeToggle = readFileSync(new URL("../client/src/components/ThemeToggle.tsx", import.meta.url), "utf8");
+const styles = readFileSync(new URL("../client/src/index.css", import.meta.url), "utf8");
 const indexHtml = readFileSync(new URL("../client/index.html", import.meta.url), "utf8");
 const info = readFileSync(new URL("../client/src/pages/PublicInfo.tsx", import.meta.url), "utf8");
 const home = readFileSync(new URL("../client/src/pages/Home.tsx", import.meta.url), "utf8");
@@ -41,6 +44,16 @@ describe("public site structure", () => {
   it("exposes identity, navigation, support, and legal links", () => {
     ["VibeBridge", "Music backup transfers", "Start merge", "ArchiveTune → Bloomee", "Contact", "Privacy", "Terms", "© {year}"].forEach(label => expect(chrome).toContain(label));
     expect(indexHtml).toContain("VibeBridge | Music Backup Transfers");
+  });
+
+  it("provides a persistent, accessible dark-mode control across the public interface", () => {
+    expect(app).toContain("switchable");
+    expect(chrome).toContain("ThemeToggle");
+    expect(themeToggle).toContain("Switch to ${nextTheme} mode");
+    expect(theme).toContain('const storageKey = "vibebridge-theme"');
+    expect(theme).toContain("localStorage.setItem(storageKey, theme)");
+    expect(styles).toContain(".dark .site-header");
+    expect(styles).toContain(".dark .site-footer");
   });
 
   it("keeps the main workflow and local-history search discoverable", () => {

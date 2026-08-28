@@ -1,5 +1,24 @@
 # VibeBridge
 
+> **A browser-first workspace for inspecting, merging, converting, and organising compatible music-app backups.**
+
+| Project lens | Details |
+| --- | --- |
+| **Type** | Web application |
+| **Stack** | TypeScript · React · Vite |
+| **Status** | Actively maintained |
+
+## Overview
+
+A browser-first workspace for inspecting, merging, converting, and organising compatible music-app backups. This README keeps the project’s verified setup, usage, privacy, and implementation notes together in one place.
+
+## Repository Snapshot
+
+The top-level workspace currently includes `Dockerfile`, `README.md`, `client/`, `components.json`, `docs/`, `drizzle/`, `drizzle.config.ts`, `inspect-response.json`, `package.json`, `patches/`, `pnpm-lock.yaml`, `scripts/`. Review the project-specific sections below before installing dependencies, supplying configuration values, or running a build.
+
+
+---
+
 **VibeBridge** is a browser-first tool for inspecting, merging, converting, and organizing compatible music-app backups. It is designed for people moving their music-library metadata between supported apps while retaining control over the files they select.
 
 > **Privacy-first workflow:** the active merger and converter run in the browser. Selected backup files are not sent to a conversion server, and local merge history stays in that browser until you delete it.

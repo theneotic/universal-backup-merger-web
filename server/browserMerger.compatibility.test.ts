@@ -1,7 +1,27 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import initSqlJs from "sql.js";
-import { inspectBloomeeNativeSnapshot, mapArchiveTuneToBloomee, mapBloomeePortableBackup, mapMetrolistToBloomee, mergeBloomeeIntoArchiveTuneDatabase, mergeBloomeePortableBackup, parseBloomeePortableBackup, supportedApplicationNames, unsupportedContainerNotes, type MergeReport } from "../client/src/lib/browserMerger";
+import {
+  inspectBloomeeNativeSnapshot,
+  mapArchiveTuneToBloomee,
+  mapBitChordBackup,
+  mapBitChordToBloomee,
+  mapBloomeePortableBackup,
+  mapBloomeeToBitChord,
+  mapMetrolistToBloomee,
+  mapSqliteBackupToBitChord,
+  mergeBitChordBackup,
+  mergeBitChordBackups,
+  mergeBitChordIntoArchiveTuneDatabase,
+  mergeBloomeeIntoArchiveTuneDatabase,
+  mergeBloomeePortableBackup,
+  parseBitChordBackup,
+  parseBloomeePortableBackup,
+  portablePlaylistsFromBitChord,
+  supportedApplicationNames,
+  unsupportedContainerNotes,
+  type MergeReport,
+} from "../client/src/lib/browserMerger";
 
 function createMetrolistTargetSchema(db: Awaited<ReturnType<typeof initSqlJs>>["Database"]) {
   db.run("CREATE TABLE artist (id TEXT PRIMARY KEY, name TEXT NOT NULL, thumbnailUrl TEXT, channelId TEXT, lastUpdateTime INTEGER NOT NULL, bookmarkedAt INTEGER, isLocal INTEGER NOT NULL)");
@@ -19,7 +39,7 @@ function report(): MergeReport { return { counts: { songs: 0, artists: 0, albums
 
 describe("cross-application backup compatibility", () => {
   it("declares every browser-mapped SQLite music application", () => {
-    expect(supportedApplicationNames).toEqual(["Metrolist", "ArchiveTune", "OuterTune", "EchoMusic", "SimpMusic", "RiPlay", "Bloomee JSON export"]);
+    expect(supportedApplicationNames).toEqual(["Metrolist", "ArchiveTune", "OuterTune", "EchoMusic", "SimpMusic", "RiPlay", "Bloomee JSON export", "BitChord JSON backup"]);
   });
 
   it("recognizes Bloomee's portable playlist and media export structure", () => {
@@ -144,5 +164,143 @@ describe("cross-application backup compatibility", () => {
     const inspected = inspectBloomeeNativeSnapshot(new Uint8Array(12_288).fill(0xff));
     expect(inspected.empty).toBe(true);
     expect(inspected.detail).toContain("empty");
+  });
+
+  it("includes BitChord JSON backup in supportedApplicationNames", () => {
+    expect(supportedApplicationNames).toContain("BitChord JSON backup");
+  });
+
+  it("parses real BitChord backup JSON correctly", () => {
+    const raw = readFileSync("e:/DOWNLOAD/bitchord-backup-2026-11-01.json", "utf8");
+    const parsed = parseBitChordBackup(JSON.parse(raw));
+    expect(parsed).not.toBeNull();
+    expect(parsed?.app).toBe("bitchord");
+    expect(parsed?.version).toBe(1);
+    expect(parsed?.versionName).toBe("1.9");
+    expect(parsed?.listening).toHaveLength(1);
+    expect(parsed?.listening[0]?.month).toBe("2026-11");
+    expect(parsed?.listening[0]?.tracks.length).toBeGreaterThan(0);
+    expect(parsed?.listening[0]?.tracks[0]?.id).toBe("cL0KKSPjZf8");
+    expect(parsed?.listening[0]?.tracks[0]?.title).toBe("Boom Shaka");
+    expect(parsed?.settings?.search_history?.value).toContain("M5OCLifZK1w");
+  });
+
+  it("maps BitChord backup tracks, artists, albums, and events for Metrolist target", () => {
+    const raw = readFileSync("e:/DOWNLOAD/bitchord-backup-2026-11-01.json", "utf8");
+    const parsed = parseBitChordBackup(JSON.parse(raw))!;
+    const mapped = mapBitChordBackup(parsed, "bitchord-backup.json");
+    expect(mapped.playlists).toHaveLength(1);
+    expect(mapped.playlists[0]?.row.name).toBe("BitChord · 2026-11");
+    expect(mapped.songs.length).toBeGreaterThanOrEqual(5);
+    expect(mapped.songs.some(s => s.id === "cL0KKSPjZf8")).toBe(true);
+    expect(mapped.artists.length).toBeGreaterThan(0);
+    expect(mapped.events.length).toBeGreaterThan(0);
+  });
+
+  it("merges BitChord backup into Metrolist target database", async () => {
+    const SQL = await initSqlJs({ wasmBinary: readFileSync(new URL("../node_modules/sql.js/dist/sql-wasm.wasm", import.meta.url)) });
+    const db = new SQL.Database();
+    try {
+      createMetrolistTargetSchema(db);
+      const raw = readFileSync("e:/DOWNLOAD/bitchord-backup-2026-11-01.json", "utf8");
+      const parsed = parseBitChordBackup(JSON.parse(raw))!;
+      const mergeReport = report();
+      mergeBitChordBackup(db, parsed, "bitchord-backup.json", mergeReport);
+      expect(mergeReport.counts.songs).toBeGreaterThan(0);
+      expect(mergeReport.counts.artists).toBeGreaterThan(0);
+      expect(mergeReport.counts.playlists).toBe(1);
+      expect(mergeReport.counts.events).toBeGreaterThan(0);
+      expect(db.exec("SELECT count(*) FROM song")[0]?.values[0]?.[0]).toBeGreaterThan(0);
+      expect(db.exec("PRAGMA integrity_check")[0]?.values).toEqual([["ok"]]);
+    } finally { db.close(); }
+  });
+
+  it("merges BitChord backup into ArchiveTune database with integrity check", async () => {
+    const SQL = await initSqlJs({ wasmBinary: readFileSync(new URL("../node_modules/sql.js/dist/sql-wasm.wasm", import.meta.url)) });
+    const db = new SQL.Database();
+    try {
+      createMetrolistTargetSchema(db);
+      const raw = readFileSync("e:/DOWNLOAD/bitchord-backup-2026-11-01.json", "utf8");
+      const parsed = parseBitChordBackup(JSON.parse(raw))!;
+      const mergeReport = mergeBitChordIntoArchiveTuneDatabase(db, parsed, "ArchiveTune.backup", "bitchord-backup.json");
+      expect(mergeReport.counts.songs).toBeGreaterThan(0);
+      expect(mergeReport.counts.playlists).toBe(1);
+      expect(db.exec("PRAGMA integrity_check")[0]?.values).toEqual([["ok"]]);
+    } finally { db.close(); }
+  });
+
+  it("exports BitChord to valid Bloomee legacy-v2 JSON payload", () => {
+    const raw = readFileSync("e:/DOWNLOAD/bitchord-backup-2026-11-01.json", "utf8");
+    const parsed = parseBitChordBackup(JSON.parse(raw))!;
+    const converted = mapBitChordToBloomee(parsed, "bitchord-backup.json");
+    expect(converted.report.playlists).toBe(1);
+    expect(converted.report.mediaItems).toBeGreaterThan(0);
+    expect(converted.payload.playlists).toMatchObject([{ playlistName: "BitChord · 2026-11" }]);
+    expect(converted.payload.media_items[0]?.mediaID).toContain("content-resolver.bloomfactory.ytmusic::");
+    expect(parseBloomeePortableBackup(converted.payload)).not.toBeNull();
+  });
+
+  it("exports Bloomee portable backup into BitChord JSON backup format", () => {
+    const bloomeePayload = {
+      playlists: [{ playlistName: "My Favorites", createdAt: "2026-11-01T00:00:00.000Z" }],
+      media_items: [{
+        mediaID: "content-resolver.bloomfactory.ytmusic::cL0KKSPjZf8",
+        title: "Boom Shaka",
+        artist: "Krsna",
+        album: "Still Here",
+        duration: 210,
+        mediaInPlaylists: [{ playlistName: "My Favorites" }],
+      }],
+    };
+    const converted = mapBloomeeToBitChord(bloomeePayload, "Bloomee.json");
+    expect(converted.payload.app).toBe("bitchord");
+    expect(converted.payload.version).toBe(1);
+    expect(converted.payload.listening).toHaveLength(1);
+    expect(converted.payload.listening[0]?.tracks).toHaveLength(1);
+    expect(converted.payload.listening[0]?.tracks[0]?.id).toBe("cL0KKSPjZf8");
+    expect(converted.payload.listening[0]?.tracks[0]?.title).toBe("Boom Shaka");
+  });
+
+  it("exports SQLite backup into BitChord JSON backup format", async () => {
+    const SQL = await initSqlJs({ wasmBinary: readFileSync(new URL("../node_modules/sql.js/dist/sql-wasm.wasm", import.meta.url)) });
+    const db = new SQL.Database();
+    try {
+      db.run("CREATE TABLE song (id TEXT PRIMARY KEY, title TEXT, duration INTEGER, thumbnailUrl TEXT, albumName TEXT, dateModified INTEGER, inLibrary INTEGER)");
+      db.run("CREATE TABLE artist (id TEXT PRIMARY KEY, name TEXT)");
+      db.run("CREATE TABLE song_artist_map (songId TEXT, artistId TEXT, position INTEGER)");
+      db.run("INSERT INTO song VALUES ('song-123', 'Test Song', 180, 'https://art.example/1.jpg', 'Test Album', 1793521182824, 1793521182824)");
+      db.run("INSERT INTO artist VALUES ('art-1', 'Artist One')");
+      db.run("INSERT INTO song_artist_map VALUES ('song-123', 'art-1', 0)");
+
+      const converted = mapSqliteBackupToBitChord(db, "Metrolist.backup", "Metrolist");
+      expect(converted.payload.app).toBe("bitchord");
+      expect(converted.payload.version).toBe(1);
+      expect(converted.payload.listening[0]?.tracks[0]?.id).toBe("song-123");
+      expect(converted.payload.listening[0]?.tracks[0]?.title).toBe("Test Song");
+      expect(converted.payload.listening[0]?.artists[0]?.name).toBe("Artist One");
+    } finally { db.close(); }
+  });
+
+  it("merges multiple BitChord backups into one consolidated BitChord backup", () => {
+    const raw = readFileSync("e:/DOWNLOAD/bitchord-backup-2026-11-01.json", "utf8");
+    const parsed1 = parseBitChordBackup(JSON.parse(raw))!;
+    const parsed2 = parseBitChordBackup(JSON.parse(raw))!;
+
+    const merged = mergeBitChordBackups([parsed1, parsed2], ["backup1.json", "backup2.json"]);
+    expect(merged.payload.app).toBe("bitchord");
+    expect(merged.payload.listening).toHaveLength(1);
+    const track = merged.payload.listening[0]?.tracks.find(t => t.id === "cL0KKSPjZf8");
+    expect(track).toBeDefined();
+    expect(track?.ms).toBe(5001 * 2);
+  });
+
+  it("exports portable playlist bundle from BitChord backup", () => {
+    const raw = readFileSync("e:/DOWNLOAD/bitchord-backup-2026-11-01.json", "utf8");
+    const parsed = parseBitChordBackup(JSON.parse(raw))!;
+    const playlists = portablePlaylistsFromBitChord(parsed);
+    expect(playlists).toHaveLength(1);
+    expect(playlists[0]?.name).toBe("BitChord · 2026-11");
+    expect(playlists[0]?.tracks.length).toBeGreaterThan(0);
+    expect(playlists[0]?.tracks[0]?.sourceUrl).toContain("https://music.youtube.com/watch?v=");
   });
 });

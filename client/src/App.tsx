@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import ArchiveTuneToBloomee from "./pages/ArchiveTuneToBloomee";
 import BloomeeBridge from "./pages/BloomeeBridge";
+import BitChordBridge from "./pages/BitChordBridge";
 import MetrolistToArchiveTune from "./pages/MetrolistToArchiveTune";
 import PortablePlaylistExport from "./pages/PortablePlaylistExport";
 import { About, Contact, Privacy, Terms } from "./pages/PublicInfo";
@@ -18,6 +19,7 @@ function Router() {
       <Route path={"/"} component={Home} />
       <Route path={"/archivetune-to-bloomee"} component={ArchiveTuneToBloomee} />
       <Route path={"/bloomee-bridges"} component={BloomeeBridge} />
+      <Route path={"/bitchord-bridge"} component={BitChordBridge} />
       <Route path={"/metrolist-to-archivetune"} component={MetrolistToArchiveTune} />
       <Route path={"/portable-playlists"} component={PortablePlaylistExport} />
       <Route path={"/about"} component={About} />

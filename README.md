@@ -26,8 +26,11 @@ The top-level workspace currently includes `Dockerfile`, `README.md`, `client/`,
 | Resource | Link |
 |---|---|
 | Public repository | [theneotic/universal-backup-merger-web](https://github.com/theneotic/universal-backup-merger-web) |
-| ArchiveTune → Bloomee converter | [/archivetune-to-bloomee](https://universal-backup-merger-web.vercel.app/archivetune-to-bloomee) |
-| Portable playlist exports | [/portable-playlists](https://universal-backup-merger-web.vercel.app/portable-playlists) |
+| BitChord bridge & JSON generator | [/bitchord-bridge](https://musicbackup.vercel.app/bitchord-bridge) |
+| ArchiveTune → Bloomee converter | [/archivetune-to-bloomee](https://musicbackup.vercel.app/archivetune-to-bloomee) |
+| Bloomee bridges | [/bloomee-bridges](https://musicbackup.vercel.app/bloomee-bridges) |
+| Metrolist → ArchiveTune merger | [/metrolist-to-archivetune](https://musicbackup.vercel.app/metrolist-to-archivetune) |
+| Portable playlist exports | [/portable-playlists](https://musicbackup.vercel.app/portable-playlists) |
 
 > **Current hosting status:** the previous Vercel URL returned `DEPLOYMENT_NOT_FOUND` during the latest validation. Treat the links above as route references after your own deployment, not as a working public deployment. The included manual deployment instructions are the current reliable path.
 
@@ -42,25 +45,27 @@ The project also includes a dedicated **ArchiveTune → Bloomee** converter. It 
 | Application | Role | Input accepted by the browser workflow | Notes |
 |---|---|---|---|
 | Metrolist | Target | `.backup` | Required target for the main merge workflow. |
-| ArchiveTune | Source, converter source, and direct target | `.backup`, `.zip`, `.db` | Can merge into Metrolist, export to Bloomee, or serve as the user-supplied target for Metrolist-to-ArchiveTune and Bloomee-to-ArchiveTune merges. |
+| ArchiveTune | Source, converter source, and direct target | `.backup`, `.zip`, `.db` | Can merge into Metrolist, export to Bloomee, or serve as the user-supplied target for Metrolist-to-ArchiveTune, Bloomee-to-ArchiveTune, and BitChord-to-ArchiveTune merges. |
+| BitChord | Source, converter source, and portable destination | `.json` | Full bidirectional JSON support. Mapped into Metrolist or ArchiveTune targets, exportable to Bloomee `.blm`, and generated from Metrolist, ArchiveTune, or Bloomee. |
 | OuterTune | Source | Compatible SQLite backup | Mapped into a Metrolist target. |
 | EchoMusic | Source | Compatible archive containing `Music Database` | Mapped into a Metrolist target. |
 | SimpMusic | Source | Compatible archive containing `Music Database` | Mapped into a Metrolist target. |
 | RiPlay | Source | Raw SQLite `.db` | Mapped into a Metrolist target. |
-| Bloomee portable export | Source and portable destination | `.json`, `.blm`, or ZIP containing legacy JSON | Mapped into a Metrolist target or a user-supplied ArchiveTune target; ArchiveTune and Metrolist can export the validated legacy-v2 `.blm` format. |
+| Bloomee portable export | Source and portable destination | `.json`, `.blm`, or ZIP containing legacy JSON | Mapped into a Metrolist target or a user-supplied ArchiveTune target; ArchiveTune, Metrolist, and BitChord can export the validated legacy-v2 `.blm` format. |
 | Bloomee native Isar snapshot | Not currently supported | `.isar` | Native Isar/MDBX snapshots cannot be safely decoded by the browser-only runtime. |
 
 ### Safe portable destination routes
 
 | Destination | Output | Safe input sources | Import notes |
 |---|---|---|---|
+| BitChord | Native `.json` backup | Metrolist, ArchiveTune, Bloomee | Use `/bitchord-bridge`. Generates a verified `bitchord-backup-*.json` file. Restore via BitChord Settings → Backup & Restore. |
 | Metrolist | ZIP of playlist CSV files | Any browser-readable supported source | Extract the ZIP and import one CSV at a time through Metrolist’s CSV playlist importer. Metrolist resolves tracks by title and artist. |
 | Echo Music | ZIP of playlist CSV files | Any browser-readable supported source | Extract the ZIP and use Echo Music’s CSV playlist importer. |
 | Echo Music | ZIP of Extended M3U playlist files | Any browser-readable supported source | Extract the ZIP and use Echo Music’s M3U playlist importer. |
 | ArchiveTune | ZIP of CSV or Extended M3U playlist files | Any browser-readable supported source | Extract the ZIP and use ArchiveTune’s reviewed playlist importer. |
-| ArchiveTune | Native merged `.backup` | Metrolist plus an existing ArchiveTune target | Use `/metrolist-to-archivetune`. The target’s ArchiveTune settings and destination-only tables stay intact. |
+| ArchiveTune | Native merged `.backup` | Metrolist, Bloomee, or BitChord plus an ArchiveTune target | Use `/metrolist-to-archivetune`, `/bloomee-bridges`, or `/bitchord-bridge`. The target’s ArchiveTune settings and destination-only tables stay intact. |
 | RiPlay | ZIP of playlist CSV files | Any browser-readable supported source | Extract the ZIP and use RiPlay’s CSV source-matching playlist importer. |
-| Bloomee | `.blm` legacy-v2 JSON | ArchiveTune and Metrolist | Use `/archivetune-to-bloomee` or `/bloomee-bridges`, then use Bloomee’s own restore workflow. |
+| Bloomee | `.blm` legacy-v2 JSON | ArchiveTune, Metrolist, and BitChord | Use `/archivetune-to-bloomee`, `/bloomee-bridges`, or `/bitchord-bridge`, then use Bloomee’s own restore workflow. |
 | ArchiveTune | Native merged `.backup` | Portable Bloomee JSON plus an existing ArchiveTune target | Use `/bloomee-bridges` with **Bloomee → ArchiveTune**. The target settings and destination-only tables remain intact. |
 | SimpMusic | Official SimpMusic converter output | ArchiveTune, OuterTune, Metrolist | SimpMusic intentionally rejects hand-authored CSV and raw third-party backups; use its own documented browser converter. |
 | OuterTune | No generated native backup | — | Cross-fork backup restore is not safely supported. The app will not create an unsafe raw database for this destination. |
@@ -108,6 +113,19 @@ The exporter preserves supported playlist tracks, artist names, album metadata, 
 5. Keep both original files, then restore the generated backup with ArchiveTune’s own backup-and-restore workflow.
 
 This direct route copies compatible shared music-library rows into the supplied ArchiveTune target and verifies the output database before download. It is not a standalone ArchiveTune database generator; an ArchiveTune target backup is required.
+
+## BitChord Bridge & JSON Generator
+
+1. Open `/bitchord-bridge`.
+2. Select your desired mode:
+   - **Metrolist → BitChord**: Convert a Metrolist `.backup` directly into a BitChord-compliant `.json` backup file.
+   - **ArchiveTune → BitChord**: Convert an ArchiveTune `.backup` into a BitChord-compliant `.json` backup file.
+   - **Bloomee → BitChord**: Convert Bloomee portable JSON into a BitChord-compliant `.json` backup file.
+   - **BitChord → ArchiveTune**: Merge a BitChord `.json` source into an existing ArchiveTune `.backup` target.
+   - **BitChord → Bloomee**: Export BitChord listening history and tracks into Bloomee's legacy-v2 `.blm` format.
+   - **Merge BitChord Backups**: Combine two or more BitChord JSON backups into one consolidated JSON file.
+3. Select your source (and target when merging into ArchiveTune), then download the result.
+4. **In BitChord:** Open **Settings → Replay / Backup → Restore Backup** and pick the generated `.json` file. All playback stats, tracks, artists, and replay history will be restored.
 
 ## Use the Bloomee bridges
 
